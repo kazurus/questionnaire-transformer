@@ -1,3 +1,5 @@
+use questionnaire_transformer::temp;
+
 fn main() {
-    println!("Hello, world!");
+    println!("Hello, world! {}", temp());
 }

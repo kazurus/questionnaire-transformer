@@ -15,6 +15,14 @@ version = "1"
 default-features = false
 features = ["precommit-hook", "run-cargo-test", "run-cargo-clippy", "run-cargo-fmt"]
 
+[[bin]]
+name = "question_transform"
+path = "src/main.rs"
+
+[lib]
+name = "questionnaire_transformer"
+path = "src/lib/lib.rs"
+
 [[bench]]
 name = "benchmark"
 harness = false
