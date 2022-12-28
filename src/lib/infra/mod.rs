@@ -1,1 +1,1 @@
-pub mod pdf_questions_processor;
+pub mod html_questions_processor;
