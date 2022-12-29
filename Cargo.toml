@@ -24,4 +24,5 @@ name = "benchmark"
 harness = false
 
 [dependencies]
+regex = "1.7.0"
 scraper = "0.14.0"

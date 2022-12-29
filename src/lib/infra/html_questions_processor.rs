@@ -1,3 +1,4 @@
+use regex::Regex;
 use scraper::{Html, Selector};
 use std::fs;
 use std::path::PathBuf;
@@ -9,22 +10,64 @@ pub struct HtmlQuestionsProcessor {
 
 impl HtmlQuestionsProcessor {
     pub fn parse(&self) {
-        self.parse_questions()
+        let document = fs::read_to_string(self.path.clone().unwrap().as_path()).unwrap();
+        let html = Html::parse_fragment(&document);
+
+        let questions = self.parse_questions(&html);
+        println!("{:?}", questions);
+
+        let score_values = self.parse_score(&html);
+        println!("{:?}", score_values);
     }
 
-    fn parse_questions(&self) {
-        let page = fs::read_to_string(self.path.clone().unwrap().as_path()).unwrap();
-        let html = Html::parse_fragment(&page);
+    fn parse_score(&self, html: &Html) -> Vec<String> {
+        let score_candidate_selector = Selector::parse("#pf1 .x6 div.t").unwrap();
 
+        let score_candidates = html
+            .select(&score_candidate_selector)
+            .filter(|y| y.value().classes().any(|x| x == "xe"));
+
+        let mut score_list = vec![String::from("")];
+
+        for element in score_candidates {
+            let prev_sibling = element
+                .prev_sibling()
+                .unwrap()
+                .value()
+                .as_element()
+                .unwrap();
+
+            let is_prev_current_score = prev_sibling.classes().any(|x| x == "xe");
+
+            let current_score = element.text().collect::<Vec<_>>().join("");
+
+            if is_prev_current_score {
+                let prev_question = score_list.last_mut().unwrap();
+                *prev_question = format!("{} {}", prev_question, current_score);
+            } else {
+                score_list.push(current_score);
+            }
+        }
+
+        if score_list.get(0) == Some(&String::from("")) {
+            score_list.remove(0);
+        }
+
+        let re = Regex::new(r"(\d|,){4}").unwrap();
+        let score_values = score_list
+            .iter()
+            .map(|score| re.find(score).unwrap().as_str().to_string())
+            .collect::<Vec<_>>();
+
+        score_values
+    }
+
+    fn parse_questions(&self, html: &Html) -> Vec<String> {
         let question_candidate_selector = Selector::parse("#pf1 .x6 div.t").unwrap();
 
-        let question_candidates = html.select(&question_candidate_selector).filter(|y| {
-            y.value()
-                .classes()
-                .collect::<Vec<_>>()
-                .iter()
-                .any(|&i| i == "xf")
-        });
+        let question_candidates = html
+            .select(&question_candidate_selector)
+            .filter(|y| y.value().classes().any(|i| i == "xf"));
 
         let mut questions = vec![String::from("")];
 
@@ -36,11 +79,7 @@ impl HtmlQuestionsProcessor {
                 .as_element()
                 .unwrap();
 
-            let is_prev_current_question = prev_sibling
-                .classes()
-                .collect::<Vec<_>>()
-                .iter()
-                .any(|&i| i == "xf");
+            let is_prev_current_question = prev_sibling.classes().any(|i| i == "xf");
 
             let current_question = element.text().collect::<Vec<_>>().join("");
 
@@ -56,7 +95,7 @@ impl HtmlQuestionsProcessor {
             questions.remove(0);
         }
 
-        println!("{:?}", questions);
+        questions
     }
 }
 
