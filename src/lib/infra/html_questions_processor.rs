@@ -18,6 +18,9 @@ impl HtmlQuestionsProcessor {
 
         let score_values = self.parse_score(&html);
         println!("{:?}", score_values);
+
+        let single_answers = self.parse_single_answers(&html);
+        println!("{:?}", single_answers);
     }
 
     fn parse_score(&self, html: &Html) -> Vec<String> {
@@ -96,6 +99,22 @@ impl HtmlQuestionsProcessor {
         }
 
         questions
+    }
+
+    fn parse_single_answers(&self, html: &Html) -> Vec<String> {
+        let answer_candidate_selector = Selector::parse("#pf1 .x6 div.t.xf+.x1").unwrap();
+        let re = Regex::new(r"^[a-d].\s(?P<answer>[[\w\W]+]+)").unwrap();
+
+        let answers = html
+            .select(&answer_candidate_selector)
+            .map(|element| element.text().collect::<Vec<_>>().join(""))
+            .collect::<Vec<_>>()
+            .iter()
+            .map(|answer| re.captures(answer).and_then(|c| c.name("answer")))
+            .map(|answer| answer.unwrap().as_str().to_string())
+            .collect::<Vec<_>>();
+
+        answers
     }
 }
 
