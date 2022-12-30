@@ -1,7 +1,11 @@
+use itertools::multizip;
 use regex::Regex;
 use scraper::{Html, Selector};
 use std::fs;
 use std::path::PathBuf;
+
+use crate::domain::aggregator::questions::Questions;
+use crate::domain::entity::question::Question;
 
 #[derive(Debug)]
 pub struct HtmlQuestionsProcessor {
@@ -14,13 +18,15 @@ impl HtmlQuestionsProcessor {
         let html = Html::parse_fragment(&document);
 
         let questions = self.parse_questions(&html);
-        println!("{:?}", questions);
-
         let score_values = self.parse_score(&html);
-        println!("{:?}", score_values);
-
         let single_answers = self.parse_single_answers(&html);
-        println!("{:?}", single_answers);
+
+        let questions_list = multizip((questions, single_answers, score_values))
+            .map(|(question, answer, score)| Question::new(question, score, answer))
+            .collect::<Vec<_>>();
+
+        let res = Questions::from(questions_list);
+        println!("{:?}", res.list);
     }
 
     fn parse_score(&self, html: &Html) -> Vec<String> {
