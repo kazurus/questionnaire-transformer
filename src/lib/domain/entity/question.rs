@@ -2,16 +2,18 @@
 #[derive(Debug)]
 pub struct Question {
     question: String,
-    score: String,
     answers: Vec<String>,
+    score: String,
+    max_score: String,
 }
 
 impl Question {
-    pub fn new(question: String, score: String, answers: Vec<String>) -> Self {
+    pub fn new(question: String, answers: Vec<String>, score: String, max_score: String) -> Self {
         Self {
             question,
-            score,
             answers,
+            score,
+            max_score,
         }
     }
 }
