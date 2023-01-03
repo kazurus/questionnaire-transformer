@@ -19,8 +19,17 @@ impl HtmlQuestionsProcessor {
         let html = Html::parse_fragment(&document);
 
         let questions = self.parse_questions(&html);
-        let score_values = self.parse_score(&html);
-        let answers = self.parse_single_answers(&html);
+        let answers = self.parse_answers(&html);
+
+        let score_tuple = self.parse_score(&html);
+        let score_values = score_tuple
+            .iter()
+            .map(|(score, _)| score.clone())
+            .collect::<Vec<_>>();
+        let max_score_values = score_tuple
+            .into_iter()
+            .map(|(_, max)| max)
+            .collect::<Vec<_>>();
 
         let max_questions_count = vec![questions.len(), score_values.len(), answers.len()]
             .into_iter()
@@ -35,25 +44,34 @@ impl HtmlQuestionsProcessor {
             [questions, vec!["".to_string(); questions_diff]].concat(),
             [answers, vec![vec!["".to_string()]; answers_diff]].concat(),
             [score_values, vec!["".to_string(); score_values_diff]].concat(),
+            [max_score_values, vec!["".to_string(); score_values_diff]].concat(),
         ))
-        .map(|(question, answers, score)| Question::new(question, score, answers))
+        .map(|(question, answers, score, max)| Question::new(question, answers, score, max))
         .collect::<Vec<_>>();
 
         let res = Questions::from(questions_list);
         println!("{:?} - {:?}", res.list, res.list.len());
     }
 
-    fn parse_score(&self, html: &Html) -> Vec<String> {
+    fn parse_score(&self, html: &Html) -> Vec<(String, String)> {
         let score_candidate_selector = Selector::parse(".s3+.s3").unwrap();
+        let re = Regex::new(r"[\w\s\W]*(?P<score>[\d|,]{4})[\w\s\W]*(?P<max>[\d|,]{4})").unwrap();
 
-        let score_list = html
-            .select(&score_candidate_selector)
-            .map(|elem| elem.text().collect::<Vec<_>>().join(""));
-
-        let re = Regex::new(r"(\d|,){4}").unwrap();
-
-        score_list
-            .map(|score| re.find(score.as_str()).unwrap().as_str().to_string())
+        html.select(&score_candidate_selector)
+            .map(|elem| elem.text().collect::<Vec<_>>().join(""))
+            .collect::<Vec<_>>()
+            .iter()
+            .map(|score_line| {
+                re.captures(score_line.as_str())
+                    .map(|cap| (cap.name("score"), cap.name("max")))
+            })
+            .map(|mayby_score| mayby_score.expect("Can't parse score tuple"))
+            .map(|(one, two)| {
+                (
+                    one.expect("Can't parse score").as_str().to_string(),
+                    two.expect("Can't parse max score").as_str().to_string(),
+                )
+            })
             .collect::<Vec<_>>()
     }
 
@@ -69,7 +87,7 @@ impl HtmlQuestionsProcessor {
         questions
     }
 
-    fn parse_single_answers(&self, html: &Html) -> Vec<Vec<String>> {
+    fn parse_answers(&self, html: &Html) -> Vec<Vec<String>> {
         let answer_candidate_selector = Selector::parse(".s4+table+span.p").unwrap();
         let re = Regex::new(r"^[\w].\s(?P<answer>[[\w\W]+]+)").unwrap();
 
@@ -78,16 +96,16 @@ impl HtmlQuestionsProcessor {
             .map(|elem| elem.text().collect::<Vec<_>>().join(""))
             .group_by(|elem| elem.starts_with("a. "))
             .into_iter()
-            .map(|(_, group)| group.collect_vec())
+            .map(|(_, group)| group.collect::<Vec<_>>())
             .chunks(2)
             .into_iter()
-            .map(|chunks| chunks.flatten().collect_vec())
+            .map(|chunks| chunks.flatten().collect::<Vec<_>>())
             .map(|answers| {
                 answers
                     .iter()
                     .map(|answer| re.captures(answer.as_str()).and_then(|c| c.name("answer")))
                     .map(|answer| answer.unwrap().as_str().to_string())
-                    .collect_vec()
+                    .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
 
