@@ -3,15 +3,15 @@
 pub struct Question {
     question: String,
     score: String,
-    answer: String,
+    answers: Vec<String>,
 }
 
 impl Question {
-    pub fn new(question: String, score: String, answer: String) -> Self {
+    pub fn new(question: String, score: String, answers: Vec<String>) -> Self {
         Self {
             question,
             score,
-            answer,
+            answers,
         }
     }
 }
