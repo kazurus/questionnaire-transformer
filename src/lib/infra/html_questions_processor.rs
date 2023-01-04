@@ -1,8 +1,8 @@
-use base64::decode;
-use image::{load_from_memory, DynamicImage};
-use itertools::multizip;
-use itertools::Itertools;
+use dssim::Dssim;
+use image::{DynamicImage, GenericImageView};
+use itertools::{multizip, Itertools};
 use regex::Regex;
+use rgb::RGBA8;
 use scraper::{ElementRef, Html, Selector};
 use std::fs;
 use std::path::PathBuf;
@@ -54,7 +54,8 @@ impl HtmlQuestionsProcessor {
         let res = Questions::from(questions_list);
         println!("{:?} - {:?}", res.list, res.list.len());
 
-        self.parse_answers_images(&html);
+        let answers_checked_statuses = self.compare_images(&html);
+        println!("{:?}", answers_checked_statuses);
     }
 
     fn parse_score(&self, html: &Html) -> Vec<(String, String)> {
@@ -145,11 +146,60 @@ impl HtmlQuestionsProcessor {
                     .as_str()
                     .to_string()
             })
-            .map(|el| decode(el).expect("Can't decode base64 from image src"))
-            .map(|el| load_from_memory(&el[..]).expect("Can't load image from buffer"))
+            .map(|el| base64::decode(el).expect("Can't decode base64 from image src"))
+            .map(|el| image::load_from_memory(&el[..]).expect("Can't load image from buffer"))
             .collect::<Vec<_>>();
 
         answers_images
+    }
+
+    fn to_rgba(&self, rgba_image: &DynamicImage) -> Vec<rgb::RGBA8> {
+        rgba_image
+            .pixels()
+            .map(|(_, _, rgba)| rgba.0)
+            .map(|vec_rgba| RGBA8::new(vec_rgba[0], vec_rgba[1], vec_rgba[2], vec_rgba[3]))
+            .collect::<Vec<_>>()
+    }
+
+    fn compare_images(&self, html: &Html) -> Vec<bool> {
+        let radio_active_original =
+            image::open("./target/button-radio-active.png").expect("Can't open active radio image");
+        let radio_rgba_vec = self.to_rgba(&radio_active_original);
+        let radio_active_image = Dssim::new()
+            .create_image_rgba(
+                &radio_rgba_vec[..],
+                radio_active_original.width() as usize,
+                radio_active_original.height() as usize,
+            )
+            .expect("Can't create dssim image for radio");
+
+        let checkbox_active_original = image::open("./target/button-checkbox-active.png")
+            .expect("Can't open active radio image");
+        let checkbox_rgba_vec = self.to_rgba(&checkbox_active_original);
+        let checkbox_active_image = Dssim::new()
+            .create_image_rgba(
+                &checkbox_rgba_vec[..],
+                radio_active_original.width() as usize,
+                radio_active_original.height() as usize,
+            )
+            .expect("Can't create dssim image for checkbox");
+
+        self.parse_answers_images(html)
+            .into_iter()
+            .map(|image| (self.to_rgba(&image), image.width(), image.height()))
+            .map(|(image, width, height)| {
+                Dssim::new()
+                    .create_image_rgba(&image[..], width as usize, height as usize)
+                    .expect("Can't create dssim image for answer image")
+            })
+            .map(|image| {
+                (
+                    Dssim::new().compare(&radio_active_image, &image).0 < 0.001,
+                    Dssim::new().compare(&checkbox_active_image, &image).0 < 0.001,
+                )
+            })
+            .map(|(is_radio_checked, is_checkbox_checked)| is_radio_checked || is_checkbox_checked)
+            .collect::<Vec<_>>()
     }
 }
 
