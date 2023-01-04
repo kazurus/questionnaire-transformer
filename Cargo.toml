@@ -24,6 +24,8 @@ name = "benchmark"
 harness = false
 
 [dependencies]
+base64 = "0.20.0"
+image = "0.24.5"
 itertools = "0.10.5"
 regex = "1.7.0"
 scraper = "0.14.0"

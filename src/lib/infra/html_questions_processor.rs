@@ -1,7 +1,9 @@
+use base64::decode;
+use image::{load_from_memory, DynamicImage};
 use itertools::multizip;
 use itertools::Itertools;
 use regex::Regex;
-use scraper::{Html, Selector};
+use scraper::{ElementRef, Html, Selector};
 use std::fs;
 use std::path::PathBuf;
 
@@ -51,6 +53,8 @@ impl HtmlQuestionsProcessor {
 
         let res = Questions::from(questions_list);
         println!("{:?} - {:?}", res.list, res.list.len());
+
+        self.parse_answers_images(&html);
     }
 
     fn parse_score(&self, html: &Html) -> Vec<(String, String)> {
@@ -110,6 +114,42 @@ impl HtmlQuestionsProcessor {
             .collect::<Vec<_>>();
 
         answers
+    }
+
+    fn parse_answers_images(&self, html: &Html) -> Vec<DynamicImage> {
+        let answer_candidate_selector = Selector::parse(".s4+table+span.p").unwrap();
+        let image_selector = Selector::parse("img").unwrap();
+        let re = Regex::new(r"^[\w\W]*[,](?P<image>[\w\W]*)$").unwrap();
+
+        let answers_images = html
+            .select(&answer_candidate_selector)
+            .map(|el| {
+                el.prev_siblings()
+                    .into_iter()
+                    .nth(1)
+                    .expect("Can't parse radio or checkbox outer container")
+            })
+            .map(|el| ElementRef::wrap(el).expect("Can't get radio/checkbox element"))
+            .map(|el| {
+                el.select(&image_selector)
+                    .next()
+                    .expect("Can't parse img selector")
+                    .value()
+                    .attr(r"src")
+                    .expect("Can't get src from image node")
+            })
+            .map(|base64_src| {
+                re.captures(base64_src)
+                    .and_then(|c| c.name("image"))
+                    .expect("Can't find base64 regex pattern in image src")
+                    .as_str()
+                    .to_string()
+            })
+            .map(|el| decode(el).expect("Can't decode base64 from image src"))
+            .map(|el| load_from_memory(&el[..]).expect("Can't load image from buffer"))
+            .collect::<Vec<_>>();
+
+        answers_images
     }
 }
 
