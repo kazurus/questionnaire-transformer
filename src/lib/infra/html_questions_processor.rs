@@ -44,18 +44,15 @@ impl HtmlQuestionsProcessor {
 
         let questions_list = multizip((
             [questions, vec!["".to_string(); questions_diff]].concat(),
-            [answers, vec![vec!["".to_string()]; answers_diff]].concat(),
             [score_values, vec!["".to_string(); score_values_diff]].concat(),
             [max_score_values, vec!["".to_string(); score_values_diff]].concat(),
+            [answers, vec![vec![("".to_string(), false)]; answers_diff]].concat(),
         ))
-        .map(|(question, answers, score, max)| Question::new(question, answers, score, max))
+        .map(|(question, score, max, answers)| Question::new(question, score, max, answers))
         .collect::<Vec<_>>();
 
         let res = Questions::from(questions_list);
         println!("{:?} - {:?}", res.list, res.list.len());
-
-        let answers_checked_statuses = self.compare_images(&html);
-        println!("{:?}", answers_checked_statuses);
     }
 
     fn parse_score(&self, html: &Html) -> Vec<(String, String)> {
@@ -92,29 +89,35 @@ impl HtmlQuestionsProcessor {
         questions
     }
 
-    fn parse_answers(&self, html: &Html) -> Vec<Vec<String>> {
+    fn parse_answers(&self, html: &Html) -> Vec<Vec<(String, bool)>> {
         let answer_candidate_selector = Selector::parse(".s4+table+span.p").unwrap();
         let re = Regex::new(r"^[\w].\s(?P<answer>[[\w\W]+]+)").unwrap();
 
-        let answers = html
+        let answers_with_statuses = html
             .select(&answer_candidate_selector)
             .map(|elem| elem.text().collect::<Vec<_>>().join(""))
-            .group_by(|elem| elem.starts_with("a. "))
+            .zip(self.get_answers_selection(html))
+            .group_by(|(elem, _)| elem.starts_with("a. "))
             .into_iter()
             .map(|(_, group)| group.collect::<Vec<_>>())
             .chunks(2)
             .into_iter()
             .map(|chunks| chunks.flatten().collect::<Vec<_>>())
-            .map(|answers| {
-                answers
+            .map(|answers_with_statuses| {
+                answers_with_statuses
                     .iter()
-                    .map(|answer| re.captures(answer.as_str()).and_then(|c| c.name("answer")))
-                    .map(|answer| answer.unwrap().as_str().to_string())
+                    .map(|(answer, status)| {
+                        (
+                            re.captures(answer.as_str()).and_then(|c| c.name("answer")),
+                            status,
+                        )
+                    })
+                    .map(|(answer, &status)| (answer.unwrap().as_str().to_string(), status))
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
 
-        answers
+        answers_with_statuses
     }
 
     fn parse_answers_images(&self, html: &Html) -> Vec<DynamicImage> {
@@ -161,7 +164,7 @@ impl HtmlQuestionsProcessor {
             .collect::<Vec<_>>()
     }
 
-    fn compare_images(&self, html: &Html) -> Vec<bool> {
+    fn get_answers_selection(&self, html: &Html) -> Vec<bool> {
         let radio_active_original =
             image::open("./target/button-radio-active.png").expect("Can't open active radio image");
         let radio_rgba_vec = self.to_rgba(&radio_active_original);
