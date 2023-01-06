@@ -16,7 +16,7 @@ pub struct HtmlQuestionsProcessor {
 }
 
 impl HtmlQuestionsProcessor {
-    pub fn parse(&self) {
+    pub fn parse(&self) -> Questions {
         let document = fs::read_to_string(self.path.clone().unwrap().as_path()).unwrap();
         let html = Html::parse_fragment(&document);
 
@@ -51,8 +51,7 @@ impl HtmlQuestionsProcessor {
         .map(|(question, score, max, answers)| Question::new(question, score, max, answers))
         .collect::<Vec<_>>();
 
-        let res = Questions::from(questions_list);
-        println!("{:?} - {:?}", res.list, res.list.len());
+        Questions::from(questions_list)
     }
 
     fn parse_score(&self, html: &Html) -> Vec<(String, String)> {

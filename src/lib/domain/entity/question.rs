@@ -1,10 +1,10 @@
-#[allow(dead_code)]
 #[derive(Debug)]
+#[readonly::make]
 pub struct Question {
-    question: String,
-    answers: Vec<(String, bool)>,
-    score: String,
-    max_score: String,
+    pub question: String,
+    pub answers: Vec<(String, bool)>,
+    pub score: String,
+    pub max_score: String,
 }
 
 impl Question {
