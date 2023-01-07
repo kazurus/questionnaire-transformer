@@ -15,4 +15,9 @@ fn main() {
     csv_repo
         .save_all(questions)
         .expect("Can't save questions to csv file");
+
+    let questions_from_csv = csv_repo
+        .get_all()
+        .expect("Can't get questions from csv file");
+    println!("{:?}", questions_from_csv);
 }
