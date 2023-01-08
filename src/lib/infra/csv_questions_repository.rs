@@ -1,10 +1,11 @@
+use std::ops::Deref;
 use std::path::PathBuf;
 
 use csv::StringRecord;
 use itertools::Itertools;
 
 use crate::domain::aggregator::questions::Questions;
-use crate::domain::entity::question::Question;
+use crate::domain::entity::question::{Question, ReadOnlyQuestion};
 
 #[derive(Debug)]
 pub struct CsvQuestionsRepository {
@@ -19,28 +20,34 @@ struct QuestionFields(
 );
 
 impl CsvQuestionsRepository {
-    pub fn save_all(&self, questions: Questions) -> Result<(), &str> {
-        let mut wtr = csv::Writer::from_path(&self.path).expect("Can't open csv file for writing");
+    pub fn save_all(&self, questions: Questions) -> Result<Vec<()>, Box<dyn std::error::Error>> {
+        let mut wtr = csv::Writer::from_path(&self.path)?;
 
-        questions.list.iter().for_each(|question_item| {
-            // let Question { question, answers, score, max_score } = question_item;
-            let answers_string = question_item
-                .answers
-                .iter()
-                .map(|(answer, status)| format!("{answer} - {status}"))
-                .collect::<Vec<_>>()
-                .join("\n");
+        questions
+            .list
+            .iter()
+            .map(|question_item| {
+                let ReadOnlyQuestion {
+                    question,
+                    answers,
+                    score,
+                    max_score,
+                } = question_item.deref();
 
-            wtr.write_record(&[
-                question_item.question.clone(),
-                answers_string,
-                question_item.score.clone(),
-                question_item.max_score.clone(),
-            ])
-            .expect("Can't save question to csv")
-        });
+                let answers_string = answers
+                    .iter()
+                    .map(|(answer, status)| format!("{answer} - {status}"))
+                    .join("\n");
 
-        Ok(())
+                wtr.write_record(&[
+                    question.clone(),
+                    answers_string,
+                    score.clone(),
+                    max_score.clone(),
+                ])
+            })
+            .map(|r| r.map_err(|e| e.into()))
+            .collect::<Result<Vec<_>, _>>()
     }
 
     pub fn get_all(&self) -> Result<Questions, Box<dyn std::error::Error>> {
