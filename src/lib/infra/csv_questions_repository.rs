@@ -22,6 +22,7 @@ struct QuestionFields(
 impl CsvQuestionsRepository {
     pub fn save_all(&self, questions: Questions) -> Result<Vec<()>, Box<dyn std::error::Error>> {
         let mut wtr = csv::Writer::from_path(&self.path)?;
+        wtr.write_record(["Question", "Answers", "Score", "Max Score"])?;
 
         questions
             .list
@@ -96,7 +97,6 @@ impl CsvQuestionsRepository {
 
     fn parse_records_to_questions_fields(&self) -> Vec<QuestionFields> {
         csv::ReaderBuilder::new()
-            .has_headers(false)
             .from_path(&self.path)
             .map_err(|e| format!("Can't open csv file for reading: {e}"))
             .map(|r| r.into_records())
