@@ -20,7 +20,7 @@ struct QuestionFields(
 );
 
 impl CsvQuestionsRepository {
-    pub fn save_all(&self, questions: Questions) -> Result<Vec<()>, Box<dyn std::error::Error>> {
+    pub fn save_all(&self, questions: &Questions) -> Result<Vec<()>, Box<dyn std::error::Error>> {
         let mut wtr = csv::Writer::from_path(&self.path)?;
         wtr.write_record(["Question", "Answers", "Score", "Max Score"])?;
 
