@@ -24,17 +24,28 @@ fn main() {
         .expect("Can't get questions from csv file");
     // println!("{:?}", questions_from_csv);
 
-    let questions_with_duplicates = Questions::concat(&questions, &questions_from_csv);
-    // println!(
-    //     "{:?} - {}",
-    //     questions_with_duplicates,
-    //     questions_with_duplicates.list.len()
-    // );
+    let questions_with_duplicates = Questions::concat(&questions_from_csv, &questions_from_csv);
+    println!(
+        "{:?}",
+        // "{:?} - {}",
+        // questions_with_duplicates,
+        questions_with_duplicates.list.len()
+    );
+    // let d = questions_with_duplicates.list.iter().inspect(|q| {
+    //     println!("dup a - {}, p - {}, h - {}", q.question.chars().take(10).collect::<String>(), q.partial_hash, q.strict_hash);
+    // }).collect::<Vec<_>>();
 
     let questions_without_duplicates = Questions::dedup(&questions_with_duplicates);
     println!(
-        "{:?} - {}",
-        questions_without_duplicates,
+        "{:?}",
+        // "{:?} - {}",
+        // questions_without_duplicates,
         questions_without_duplicates.list.len()
-    )
+    );
+
+    let csv_file_path_dedup = PathBuf::from("./target/temp1.csv");
+    let csv_repo_dedup = CsvQuestionsRepository::from(csv_file_path_dedup);
+    csv_repo_dedup
+        .save_all(&questions_without_duplicates)
+        .expect("Can't save questions to csv file");
 }
