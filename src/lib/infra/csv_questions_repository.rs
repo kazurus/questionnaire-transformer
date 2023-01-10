@@ -33,6 +33,7 @@ impl CsvQuestionsRepository {
                     answers,
                     score,
                     max_score,
+                    ..
                 } = question_item.deref();
 
                 let answers_string = answers

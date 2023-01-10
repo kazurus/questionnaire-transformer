@@ -24,18 +24,29 @@ impl Questions {
             .clone()
             .into_iter()
             .fold(HashMap::new(), |mut acc, question| {
-                let hash = question.calculate_hash();
-                let q = acc.entry(hash).or_insert_with(|| question.clone());
+                let questions_map: &mut HashMap<u64, Question> =
+                    acc.entry(question.partial_hash).or_default();
 
-                if !q.has_max_score() {
-                    acc.insert(hash, question);
-                }
+                match question.has_max_score() {
+                    true => questions_map.entry(u64::MAX).or_insert(question),
+                    _ => questions_map
+                        .entry(question.strict_hash)
+                        .or_insert(question),
+                };
 
                 acc
             })
             .values()
-            .cloned()
-            .collect::<Vec<Question>>()
+            .fold(vec![] as Vec<Question>, |mut acc, q_map| {
+                let questions_vec: Vec<Question> = match q_map.get(&u64::MAX) {
+                    Some(question) => vec![question.clone()],
+                    _ => q_map.values().cloned().collect(),
+                };
+
+                acc.extend(questions_vec);
+
+                acc
+            })
             .into()
     }
 }
