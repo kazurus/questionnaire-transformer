@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use csv::StringRecord;
 use itertools::Itertools;
 
-use crate::domain::aggregator::questions::Questions;
+use crate::domain::aggregator::{questions::Questions, questions_repository::QuestionsRepository};
 use crate::domain::entity::question::{Question, ReadOnlyQuestion};
 
 #[derive(Debug)]
@@ -19,8 +19,8 @@ struct QuestionFields(
     Vec<Option<(String, bool)>>,
 );
 
-impl CsvQuestionsRepository {
-    pub fn save_all(&self, questions: &Questions) -> Result<Vec<()>, Box<dyn std::error::Error>> {
+impl QuestionsRepository for CsvQuestionsRepository {
+    fn save_all(&self, questions: &Questions) -> Result<Vec<()>, Box<dyn std::error::Error>> {
         let mut wtr = csv::Writer::from_path(&self.path)?;
         wtr.write_record(["Question", "Answers", "Score", "Max Score"])?;
 
@@ -52,7 +52,7 @@ impl CsvQuestionsRepository {
             .collect::<Result<Vec<_>, _>>()
     }
 
-    pub fn get_all(&self) -> Result<Questions, Box<dyn std::error::Error>> {
+    fn get_all(&self) -> Result<Questions, Box<dyn std::error::Error>> {
         let questions_vec = self
             .parse_records_to_questions_fields()
             .into_iter()
@@ -70,7 +70,7 @@ impl CsvQuestionsRepository {
         Ok(Questions::from(questions_vec?))
     }
 
-    pub fn get_all_soft(&self) -> Result<Questions, Box<dyn std::error::Error>> {
+    fn get_all_soft(&self) -> Result<Questions, Box<dyn std::error::Error>> {
         let questions_vec = self
             .parse_records_to_questions_fields()
             .into_iter()
@@ -95,7 +95,9 @@ impl CsvQuestionsRepository {
 
         Ok(Questions::from(questions_vec?))
     }
+}
 
+impl CsvQuestionsRepository {
     fn parse_records_to_questions_fields(&self) -> Vec<QuestionFields> {
         csv::ReaderBuilder::new()
             .from_path(&self.path)
