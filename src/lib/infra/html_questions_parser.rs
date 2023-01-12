@@ -8,15 +8,16 @@ use std::fs;
 use std::path::PathBuf;
 
 use crate::domain::aggregator::questions::Questions;
+use crate::domain::aggregator::questions_parser::QuestionsParser;
 use crate::domain::entity::question::Question;
 
 #[derive(Debug)]
-pub struct HtmlQuestionsProcessor {
+pub struct HtmlQuestionsParser {
     path: Option<PathBuf>,
 }
 
-impl HtmlQuestionsProcessor {
-    pub fn parse(&self) -> Questions {
+impl QuestionsParser for HtmlQuestionsParser {
+    fn parse(&self) -> Result<Questions, Box<dyn std::error::Error>> {
         let document = fs::read_to_string(self.path.clone().unwrap().as_path()).unwrap();
         let html = Html::parse_fragment(&document);
 
@@ -51,9 +52,11 @@ impl HtmlQuestionsProcessor {
         .map(|(question, score, max, answers)| Question::new(question, score, max, answers))
         .collect::<Vec<_>>();
 
-        Questions::from(questions_list)
+        Ok(Questions::from(questions_list))
     }
+}
 
+impl HtmlQuestionsParser {
     fn parse_score(&self, html: &Html) -> Vec<(String, String)> {
         let score_candidate_selector = Selector::parse(".s3+.s3").unwrap();
         let re = Regex::new(r"[\w\s\W]*(?P<score>[\d|,]{4})[\w\s\W]*(?P<max>[\d|,]{4})").unwrap();
@@ -205,8 +208,8 @@ impl HtmlQuestionsProcessor {
     }
 }
 
-impl From<PathBuf> for HtmlQuestionsProcessor {
-    fn from(value: PathBuf) -> HtmlQuestionsProcessor {
+impl From<PathBuf> for HtmlQuestionsParser {
+    fn from(value: PathBuf) -> HtmlQuestionsParser {
         Self { path: Some(value) }
     }
 }
