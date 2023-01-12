@@ -3,7 +3,6 @@ use std::rc::Rc;
 use crate::app::dto::{dto_list::DtoList, question_dto::QuestionDto};
 use crate::domain::aggregator::questions_repository::QuestionsRepository;
 
-#[readonly::make]
 pub struct GetAllQuestionsUseCaseHandler {
     questions_repo: Rc<dyn QuestionsRepository>,
 }
