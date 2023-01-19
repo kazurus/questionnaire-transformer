@@ -5,27 +5,26 @@ use std::{
 
 use itertools::Itertools;
 
+use crate::domain::value_object::answer::Answer;
+
 #[derive(Debug, Clone)]
 #[readonly::make]
 pub struct Question {
     pub partial_hash: u64,
     pub strict_hash: u64,
     pub question: String,
-    pub answers: Vec<(String, bool)>,
+    pub answers: Vec<Answer>,
     pub score: String,
     pub max_score: String,
 }
 
 impl Question {
-    pub fn new(
-        question: String,
-        score: String,
-        max_score: String,
-        answers: Vec<(String, bool)>,
-    ) -> Self {
+    pub fn new(question: String, score: String, max_score: String, answers: Vec<Answer>) -> Self {
         let partial_hash = Question::calculate_partial_hash(&question, &max_score, &answers);
         let strict_hash = Question::calculate_strict_hash(&partial_hash, &score, &answers);
         // println!("a - {}, p - {}, h - {}", &question.chars().take(5).collect::<String>(), partial_hash, strict_hash);
+
+        let answers_entities = answers.into_iter().map(Answer::from).collect::<Vec<_>>();
 
         Self {
             partial_hash,
@@ -33,7 +32,7 @@ impl Question {
             question,
             score,
             max_score,
-            answers,
+            answers: answers_entities,
         }
     }
 
@@ -41,11 +40,7 @@ impl Question {
         self.score == self.max_score
     }
 
-    pub fn calculate_strict_hash(
-        partial_hash: &u64,
-        score: &str,
-        answers: &[(String, bool)],
-    ) -> u64 {
+    pub fn calculate_strict_hash(partial_hash: &u64, score: &str, answers: &[Answer]) -> u64 {
         let mut state = DefaultHasher::new();
 
         partial_hash.to_string().hash(&mut state);
@@ -53,19 +48,20 @@ impl Question {
 
         let vec = answers
             .iter()
+            .map(|answer| match answer {
+                Answer::SingleChoice(title, status) => (title.clone(), status.clone().to_string()),
+                Answer::MultiChoice(title, status) => (title.clone(), status.clone()),
+                Answer::None => (String::default(), String::default()),
+            })
             .sorted()
-            .map(|(_, state)| state.to_string().trim().to_string())
+            .map(|(_, state)| state.trim().to_string())
             .collect::<Vec<_>>();
         vec.join("-").hash(&mut state);
 
         state.finish()
     }
 
-    pub fn calculate_partial_hash(
-        question: &str,
-        max_score: &str,
-        answers: &[(String, bool)],
-    ) -> u64 {
+    pub fn calculate_partial_hash(question: &str, max_score: &str, answers: &[Answer]) -> u64 {
         let mut state = DefaultHasher::new();
 
         question.trim().hash(&mut state);
@@ -73,8 +69,13 @@ impl Question {
 
         let vec = answers
             .iter()
+            .map(|answer| match answer {
+                Answer::SingleChoice(title, status) => (title.clone(), status.clone().to_string()),
+                Answer::MultiChoice(title, status) => (title.clone(), status.clone()),
+                Answer::None => (String::default(), String::default()),
+            })
             .sorted()
-            .map(|(a, _)| a.trim())
+            .map(|(a, _)| a.trim().to_string())
             .collect::<Vec<_>>();
         vec.join("-").hash(&mut state);
 

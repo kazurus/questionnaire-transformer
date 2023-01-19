@@ -6,18 +6,14 @@ use itertools::Itertools;
 
 use crate::domain::aggregator::{questions::Questions, questions_repository::QuestionsRepository};
 use crate::domain::entity::question::{Question, ReadOnlyQuestion};
+use crate::domain::value_object::answer::Answer;
 
 #[derive(Debug)]
 pub struct CsvQuestionsRepository {
     path: PathBuf,
 }
 
-struct QuestionFields(
-    Option<String>,
-    Option<String>,
-    Option<String>,
-    Vec<Option<(String, bool)>>,
-);
+struct QuestionFields(Option<String>, Option<String>, Option<String>, Vec<Answer>);
 
 impl QuestionsRepository for CsvQuestionsRepository {
     fn save_all(&self, questions: &Questions) -> Result<Vec<()>, Box<dyn std::error::Error>> {
@@ -37,8 +33,14 @@ impl QuestionsRepository for CsvQuestionsRepository {
                 } = question_item.deref();
 
                 let answers_string = answers
-                    .iter()
-                    .map(|(answer, status)| format!("{answer} - {status}"))
+                    .clone()
+                    .into_iter()
+                    .map(|answer| match answer {
+                        Answer::SingleChoice(title, is_checked) => {
+                            format!("{title} - {is_checked}")
+                        }
+                        _ => String::default(),
+                    })
                     .join("\n");
 
                 wtr.write_record(&[
@@ -57,9 +59,7 @@ impl QuestionsRepository for CsvQuestionsRepository {
             .parse_records_to_questions_fields()
             .into_iter()
             .map(|QuestionFields(question, score, max_score, answers)| {
-                let answers = answers.into_iter().collect::<Option<Vec<_>>>();
-
-                Some(Question::new(question?, score?, max_score?, answers?))
+                Some(Question::new(question?, score?, max_score?, answers))
             })
             .enumerate()
             .map(|(line_id, mayby_question)| {
@@ -75,16 +75,11 @@ impl QuestionsRepository for CsvQuestionsRepository {
             .parse_records_to_questions_fields()
             .into_iter()
             .map(|QuestionFields(question, score, max_score, answers)| {
-                let answers = answers
-                    .into_iter()
-                    .filter(Option::is_some)
-                    .collect::<Option<Vec<_>>>();
-
                 Some(Question::new(
                     question.unwrap_or_default(),
                     score.unwrap_or_default(),
                     max_score.unwrap_or_default(),
-                    answers.unwrap_or_default(),
+                    answers,
                 ))
             })
             .enumerate()
@@ -113,27 +108,24 @@ impl CsvQuestionsRepository {
         let question = record.get(0).map(|q| q.to_string());
         let score = record.get(2).map(|q| q.to_string());
         let max_score = record.get(3).map(|q| q.to_string());
-        let answers = self
-            .parse_record_answers(record.get(1).unwrap_or_default())
-            .into_iter()
-            .collect::<Vec<Option<_>>>();
+        let answers = self.parse_record_answers(record.get(1).unwrap_or_default());
 
         QuestionFields(question, score, max_score, answers)
     }
 
-    fn parse_record_answers(&self, answers: &str) -> Vec<Option<(String, bool)>> {
+    fn parse_record_answers(&self, answers: &str) -> Vec<Answer> {
         answers
             .split('\n')
             .map(|line| line.split(" - ").collect_tuple::<(&str, &str)>())
-            .map(|res| {
-                let (answer, status) = res?;
-
-                match status {
-                    "true" => Some((answer.to_string(), true)),
-                    _ => Some((answer.to_string(), false)),
+            .map(|res| match res {
+                Some((answer, "true")) => Answer::SingleChoice(answer.to_string(), true),
+                Some((answer, "false")) => Answer::SingleChoice(answer.to_string(), false),
+                Some((answer, variant)) => {
+                    Answer::MultiChoice(answer.to_string(), variant.to_string())
                 }
+                None => Answer::None,
             })
-            .collect::<Vec<Option<_>>>()
+            .collect::<Vec<_>>()
     }
 }
 
