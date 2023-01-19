@@ -10,6 +10,7 @@ use std::path::PathBuf;
 use crate::domain::aggregator::questions::Questions;
 use crate::domain::aggregator::questions_parser::QuestionsParser;
 use crate::domain::entity::question::Question;
+use crate::domain::value_object::answer::Answer;
 
 #[derive(Debug)]
 pub struct HtmlQuestionsParser {
@@ -47,7 +48,7 @@ impl QuestionsParser for HtmlQuestionsParser {
             [questions, vec!["".to_string(); questions_diff]].concat(),
             [score_values, vec!["".to_string(); score_values_diff]].concat(),
             [max_score_values, vec!["".to_string(); score_values_diff]].concat(),
-            [answers, vec![vec![("".to_string(), false)]; answers_diff]].concat(),
+            [answers, vec![vec![Answer::None]; answers_diff]].concat(),
         ))
         .map(|(question, score, max, answers)| Question::new(question, score, max, answers))
         .collect::<Vec<_>>();
@@ -91,7 +92,7 @@ impl HtmlQuestionsParser {
         questions
     }
 
-    fn parse_answers(&self, html: &Html) -> Vec<Vec<(String, bool)>> {
+    fn parse_answers(&self, html: &Html) -> Vec<Vec<Answer>> {
         let answer_candidate_selector = Selector::parse(".s4+table+span.p").unwrap();
         let re = Regex::new(r"^[\w].\s(?P<answer>[[\w\W]+]+)").unwrap();
 
@@ -114,7 +115,9 @@ impl HtmlQuestionsParser {
                             status,
                         )
                     })
-                    .map(|(answer, &status)| (answer.unwrap().as_str().to_string(), status))
+                    .map(|(answer, &status)| {
+                        Answer::from((answer.unwrap().as_str().to_string(), status))
+                    })
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();

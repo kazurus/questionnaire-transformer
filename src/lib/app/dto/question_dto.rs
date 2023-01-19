@@ -1,6 +1,9 @@
 use std::ops::Deref;
 
-use crate::domain::entity::question::{Question, ReadOnlyQuestion};
+use crate::domain::{
+    entity::question::{Question, ReadOnlyQuestion},
+    value_object::answer::Answer,
+};
 
 #[readonly::make]
 #[derive(Debug, Clone)]
@@ -21,11 +24,20 @@ impl From<&Question> for QuestionDto {
             ..
         } = question.deref();
 
+        let answers_tuple = answers
+            .clone()
+            .into_iter()
+            .map(|answer| match answer {
+                Answer::SingleChoice(title, is_checked) => (title, is_checked),
+                _ => (String::default(), bool::default()),
+            })
+            .collect::<Vec<_>>();
+
         Self {
             question: question.into(),
             score: score.into(),
             max_score: max_score.into(),
-            answers: answers.clone(),
+            answers: answers_tuple,
         }
     }
 }
