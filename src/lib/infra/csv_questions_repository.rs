@@ -36,8 +36,8 @@ impl QuestionsRepository for CsvQuestionsRepository {
                     .clone()
                     .into_iter()
                     .map(|answer| match answer {
-                        Answer::SingleChoice(title, is_checked) => {
-                            format!("{title} - {is_checked}")
+                        Answer::Choice(title, is_checked) => {
+                            format!("{title} -> {is_checked}")
                         }
                         _ => String::default(),
                     })
@@ -116,14 +116,11 @@ impl CsvQuestionsRepository {
     fn parse_record_answers(&self, answers: &str) -> Vec<Answer> {
         answers
             .split('\n')
-            .map(|line| line.split(" - ").collect_tuple::<(&str, &str)>())
+            .map(|line| line.split(" -> ").collect_tuple::<(&str, &str)>())
             .map(|res| match res {
-                Some((answer, "true")) => Answer::SingleChoice(answer.to_string(), true),
-                Some((answer, "false")) => Answer::SingleChoice(answer.to_string(), false),
-                Some((answer, variant)) => {
-                    Answer::MultiChoice(answer.to_string(), variant.to_string())
-                }
-                None => Answer::None,
+                Some((answer, "true")) => Answer::Choice(answer.to_string(), true),
+                Some((answer, "false")) => Answer::Choice(answer.to_string(), false),
+                _ => Answer::None,
             })
             .collect::<Vec<_>>()
     }

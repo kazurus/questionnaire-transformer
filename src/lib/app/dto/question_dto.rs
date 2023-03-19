@@ -28,7 +28,7 @@ impl From<&Question> for QuestionDto {
             .clone()
             .into_iter()
             .map(|answer| match answer {
-                Answer::SingleChoice(title, is_checked) => (title, is_checked),
+                Answer::Choice(title, is_checked) => (title, is_checked),
                 _ => (String::default(), bool::default()),
             })
             .collect::<Vec<_>>();

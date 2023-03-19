@@ -49,8 +49,7 @@ impl Question {
         let vec = answers
             .iter()
             .map(|answer| match answer {
-                Answer::SingleChoice(title, status) => (title.clone(), status.clone().to_string()),
-                Answer::MultiChoice(title, status) => (title.clone(), status.clone()),
+                Answer::Choice(title, status) => (title.clone(), status.clone().to_string()),
                 Answer::None => (String::default(), String::default()),
             })
             .sorted()
@@ -70,8 +69,7 @@ impl Question {
         let vec = answers
             .iter()
             .map(|answer| match answer {
-                Answer::SingleChoice(title, status) => (title.clone(), status.clone().to_string()),
-                Answer::MultiChoice(title, status) => (title.clone(), status.clone()),
+                Answer::Choice(title, status) => (title.clone(), status.clone().to_string()),
                 Answer::None => (String::default(), String::default()),
             })
             .sorted()
