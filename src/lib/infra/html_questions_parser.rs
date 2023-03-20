@@ -14,12 +14,12 @@ use crate::domain::value_object::answer::Answer;
 
 #[derive(Debug)]
 pub struct HtmlQuestionsParser {
-    path: Option<PathBuf>,
+    path: PathBuf,
 }
 
 impl QuestionsParser for HtmlQuestionsParser {
     fn parse(&self) -> Result<Questions, Box<dyn std::error::Error>> {
-        let document = fs::read_to_string(self.path.clone().unwrap().as_path()).unwrap();
+        let document = fs::read_to_string(self.path.clone().as_path()).unwrap();
         let html = Html::parse_fragment(&document);
 
         let questions = self.parse_questions(&html);
@@ -213,6 +213,6 @@ impl HtmlQuestionsParser {
 
 impl From<PathBuf> for HtmlQuestionsParser {
     fn from(value: PathBuf) -> HtmlQuestionsParser {
-        Self { path: Some(value) }
+        Self { path: value }
     }
 }
