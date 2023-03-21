@@ -1,6 +1,5 @@
 use std::rc::Rc;
 
-use crate::app::dto::dto_list::DtoList;
 use crate::domain::aggregator::questions_parser::QuestionsParser;
 use crate::domain::aggregator::questions_repository::QuestionsRepository;
 
@@ -20,9 +19,11 @@ impl ParseAndSaveUseCaseHandler {
         }
     }
 
-    pub fn execute(&self) -> Result<DtoList<()>, Box<dyn std::error::Error>> {
+    pub fn execute(&self) -> Result<(), Box<dyn std::error::Error>> {
         let questions = self.questions_parser.parse()?;
 
-        self.questions_repo.save_all(&questions).map(DtoList)
+        self.questions_repo.save_all(&questions)?;
+
+        Ok(())
     }
 }
