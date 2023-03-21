@@ -9,7 +9,7 @@ use crate::infra::html_questions_parser_v2::HtmlQuestionsParserV2;
 
 use crate::app::use_case::{
     get_all_questions::handler::GetAllQuestionsUseCaseHandler,
-    parse_and_save_questions::handler::ParseAndSaveUseCaseHandler,
+    parse_merge_and_save_questions::handler::ParseMergeAndSaveUseCaseHandler,
 };
 
 use std::fs;
@@ -48,7 +48,7 @@ impl ConsoleArgsApi {
         let parser = Rc::new(HtmlQuestionsParserV2::from(file.to_path_buf()));
         let csv_repo = Rc::new(CsvQuestionsRepository::from(output.to_path_buf()));
 
-        ParseAndSaveUseCaseHandler::new(csv_repo.clone(), parser).execute()?;
+        ParseMergeAndSaveUseCaseHandler::new(csv_repo.clone(), parser).execute()?;
 
         let questions_from_csv = GetAllQuestionsUseCaseHandler::new(csv_repo).execute()?;
         println!("{:?}", questions_from_csv);
